@@ -4,11 +4,14 @@ My solo solution to the [Recommender Systems 2025 Challenge](https://www.kaggle.
 
 **Task:** recommend 20 new movies to each user from implicit feedback only. About 3.8M interactions, 27k users, 7k items; random 80/20 holdout; metric **Recall@20**.
 
-| | Private leaderboard |
+| | Recall@20 |
 |---|---|
-| This solution (team *Noooocooked*, 1 person) | **0.51440** — rank 26 / 71 |
-| Winning team | 0.53149 |
-| Ratio to top score | 96.8% |
+| Best public leaderboard score (submission v5) | **0.51605** |
+| Final private leaderboard score (submission v7, team *Noooocooked*, 1 person) | **0.51440** — rank 26 / 71 |
+| Winning team, private leaderboard | 0.53149 |
+| Final score / winning score | 96.8% |
+
+The best public score and the final score come from two different submissions; [see below](#why-the-best-public-score-is-not-the-final-score) for why.
 
 ## Approach
 
@@ -51,22 +54,36 @@ flowchart LR
 
 ## How the score got there
 
-| Submission | Private Recall@20 |
-|---|---|
-| ItemKNN + TopPop baseline | 0.0773 |
-| Modified ItemKNN | 0.2648 |
-| SLIM + TopPop | 0.3510 |
-| SLIM alone, tuned | 0.5053 |
-| SLIM + RP3β + EASE-R score hybrid | 0.5093 |
-| SLIM + iALS hybrid | 0.5095 |
-| XGBoost reranker v2 | 0.5114 |
-| **XGBoost reranker v7 (final)** | **0.5144** |
+| Submission | Public | Private |
+|---|---|---|
+| ItemKNN + TopPop baseline | 0.0767 | 0.0773 |
+| Modified ItemKNN | 0.2637 | 0.2648 |
+| SLIM + TopPop | 0.3512 | 0.3510 |
+| SLIM alone, tuned | 0.5073 | 0.5053 |
+| SLIM + RP3β + EASE-R score hybrid | 0.5109 | 0.5093 |
+| SLIM + iALS hybrid | 0.5113 | 0.5095 |
+| XGBoost reranker v2 | 0.5127 | 0.5114 |
+| **XGBoost reranker v5 (best public)** | **0.5161** | 0.5141 |
+| **XGBoost reranker v7 (final score)** | 0.5158 | **0.5144** |
 
 Linear score hybrids flattened out around 0.509. The learned reranker added the last half point.
 
+## Why the best public score is not the final score
+
+Each leaderboard scores a different half of the test interactions, and the final score is the best **private** score among the two submissions selected for evaluation. I did not select them by hand, so Kaggle picked my two best public submissions, v5 (public 0.51605) and v7 (public 0.51582). On the private half v7 came out ahead, 0.51440 against 0.51409, so 0.51440 became the final score. Choosing v5 explicitly would not have helped: it would have scored 0.51409.
+
+Every submission scoring above 0.50 lost between 0.0012 and 0.0020 from public to private, so the private half is a little harder for this kind of model. v5 dropped 0.0020 and v7 0.0014: a small difference that is partly noise, but consistent with v5 being slightly more tuned to the public half. Probable reasons, from its notebook version:
+
+- **Model selection on the public board.** The local check (Recall@20 0.296) was computed on the same validation interactions used as the reranker's training labels, so it could not be trusted, and choices were steered by the public score instead. With half the test set, a lead of 0.0002 over v7 is within noise.
+- **No real validation for the ranker.** XGBoost ran a fixed 350 trees with its training data as the evaluation set, so nothing could flag overfitting.
+- **Feature shift at submission time.** The ranker learned from base models trained on 80% of the data, then scored base models retrained on 100%. v5's features were mostly raw model scores and products of raw scores, whose scale changes when a model sees more data.
+- **Unstable candidate set.** Up to 1,100 candidates per user were put in a Python `set` and cut to 700 in arbitrary order (the bug described below).
+
+This repository addresses each point: the ranker is early-stopped on held-out users, raw scores are paired with per-user ranks, z-scores and percentiles that stay stable when base models are retrained, `evaluate` scores on a test split the ranker never sees, and candidates are ranked before the cut.
+
 ## Changes from the competition notebook
 
-This repo is a cleaned-up rewrite of the Kaggle notebook that produced the final submission. Fixing the issues below changes the pipeline, so the code is not expected to reproduce 0.51440 to the digit.
+This repo is a cleaned-up rewrite of the latest version of my Kaggle notebook (saved after the competition, following v5 and v7). Fixing the issues below changes the pipeline, so the code is not expected to reproduce either leaderboard score to the digit.
 
 - **Candidate cut.** The notebook merged candidates into a Python `set` and kept `[:150]`; sets are unordered, so it dropped arbitrary candidates. Candidates are now ranked by reciprocal-rank fusion before the cut.
 - **Feature drift.** Training and inference built features in two different functions (inference had 3 extra columns and a renamed one). There is now one `build_features` for both, and a test checks the columns match.
