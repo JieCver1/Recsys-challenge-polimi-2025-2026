@@ -72,7 +72,7 @@ Linear score hybrids flattened out around 0.509. The learned reranker added the 
 
 Each leaderboard scores a different half of the test interactions, and the final score is the best **private** score among the two submissions selected for evaluation. I did not select them by hand, so Kaggle picked my two best public submissions, v5 (public 0.51605) and v7 (public 0.51582). On the private half v7 came out ahead, 0.51440 against 0.51409, so 0.51440 became the final score. Choosing v5 explicitly would not have helped: it would have scored 0.51409.
 
-Every submission scoring above 0.50 lost between 0.0012 and 0.0020 from public to private, so the private half is a little harder for this kind of model. v5 dropped 0.0020 and v7 0.0014: a small difference that is partly noise, but consistent with v5 being slightly more tuned to the public half. Probable reasons, from its notebook version:
+Every submission scoring above 0.50 lost between 0.0012 and 0.0020 from public to private, so the private half is a little harder for this kind of model. v5 dropped 0.0020 and v7 0.0014: a small difference that is partly noise, but consistent with v5 being slightly more tuned to the public half. Probable reasons, from [its notebook version](notebooks/kaggle_xgboost_v10_best_public.ipynb):
 
 - **Model selection on the public board.** The local check (Recall@20 0.296) was computed on the same validation interactions used as the reranker's training labels, so it could not be trusted, and choices were steered by the public score instead. With half the test set, a lead of 0.0002 over v7 is within noise.
 - **No real validation for the ranker.** XGBoost ran a fixed 350 trees with its training data as the evaluation set, so nothing could flag overfitting.
@@ -83,7 +83,7 @@ This repository addresses each point: the ranker is early-stopped on held-out us
 
 ## Changes from the competition notebook
 
-This repo is a cleaned-up rewrite of the latest version of my Kaggle notebook (saved after the competition, following v5 and v7). Fixing the issues below changes the pipeline, so the code is not expected to reproduce either leaderboard score to the digit.
+This repo is a cleaned-up rewrite of the [latest version of my Kaggle notebook](notebooks/kaggle_xgboost_v24_latest.ipynb) (saved after the competition, following v5 and v7). Fixing the issues below changes the pipeline, so the code is not expected to reproduce either leaderboard score to the digit.
 
 - **Candidate cut.** The notebook merged candidates into a Python `set` and kept `[:150]`; sets are unordered, so it dropped arbitrary candidates. Candidates are now ranked by reciprocal-rank fusion before the cut.
 - **Feature drift.** Training and inference built features in two different functions (inference had 3 extra columns and a renamed one). There is now one `build_features` for both, and a test checks the columns match.
@@ -116,9 +116,14 @@ recsys2025/
   base_models.py  the 10 base models and their tuned hyperparameters
   two_stage.py    candidates, features, XGBoost reranker, Recall@20
   __main__.py     evaluate / submit commands
+notebooks/
+  kaggle_xgboost_v10_best_public.ipynb  Kaggle notebook version that produced submission v5 (best public score)
+  kaggle_xgboost_v24_latest.ipynb       last Kaggle notebook version, the basis of this rewrite
 scripts/setup_framework.sh
 tests/test_two_stage.py
 ```
+
+The two notebooks are kept exactly as they ran on Kaggle, outputs included. They expect Kaggle's input paths and a private copy of the course framework, so use the `recsys2025` package to run the pipeline.
 
 ## AI assistance
 
