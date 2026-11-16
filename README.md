@@ -91,6 +91,31 @@ This repo is a cleaned-up rewrite of the [latest version of my Kaggle notebook](
 - **Memory.** The notebook cached a dense users × items score matrix for every model (~7.5 GB). Scores are now computed in user batches and only candidate entries are kept.
 - **Library updates.** XGBoost's `gpu_hist` became `device="cuda"`, and the course framework is patched at setup for NumPy ≥ 1.24 and Cython 3.
 
+## Limitations of the final model and how to improve it
+
+The final model sits 0.017 Recall@20 below the winning team (0.5144 against 0.5315). These are the weaknesses I see, roughly in order of expected impact. None of the fixes has been measured on the competition data yet.
+
+**1. The ranker can only reorder what the candidates contain.** If a relevant item is not among a user's 150 candidates, no reranker can recover it. The competition notebooks did not report candidate recall, and EASE-R, the second-best single model, was used only as a feature, not as a candidate source.
+*Improve:* log candidate recall (the share of held-out items present in the candidate set) for 150, 300 and 700 candidates, add EASE-R as a generator, and choose the pool size from that curve rather than by hand. `fit` already reports candidate recall.
+
+**2. The training objective does not match the metric.** The ranker uses a pairwise loss and early-stops on NDCG@20, while the competition scores Recall@20, which ignores the order inside the top 20.
+*Improve:* try `rank:ndcg` with a top-20 truncation and a binary `logistic` objective, and early-stop and select models on Recall@20 computed on held-out users.
+
+**3. Features shift between training and submission.** The ranker learns from base models trained on 80% of the data and is applied to models retrained on 100%, whose raw scores have a different scale.
+*Improve:* compare three options on the local test split: keep only normalised features (ranks, z-scores, percentiles); skip the final retrain and submit with the 80% models; or rescale raw scores per model to match the training distribution.
+
+**4. Only one split supplies labels.** The ranker learns from a single 80/20 holdout, so its labels are one random 20% of each user's interactions.
+*Improve:* repeat the split with several seeds (or k folds), build features and labels for each, and train the ranker on all of them stacked. Averaging rankers trained on different folds also reduces variance.
+
+**5. Hyperparameters were tuned for the wrong goal.** Base models were tuned for their own Recall@20, though in this pipeline they serve as candidate generators (where recall@150 matters) and as features. The XGBoost settings were set by hand.
+*Improve:* tune generator models for candidate recall, and tune the ranker with Optuna on held-out users.
+
+**6. Features are only model scores.** The ranker sees no information about how the candidate was found or how the user and item behave.
+*Improve:* add the number of generators that proposed the item and its rank in each list, item-to-item similarity between the candidate and the user's history (max and mean), and user-level statistics such as the average popularity of the items they interacted with. Separate rankers, or a profile-length feature with more weight, for users with very short histories may also help.
+
+**7. Decisions were taken on noisy signals.** The public leaderboard uses half the test data, and differences of ±0.002 between submissions are within noise (see the section above).
+*Improve:* select changes with `evaluate`, averaged over several random seeds, and use the leaderboard only as a final check.
+
 ## Setup
 
 ```bash
