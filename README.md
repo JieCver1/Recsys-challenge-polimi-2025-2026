@@ -125,6 +125,8 @@ tests/test_two_stage.py
 
 The two notebooks are kept exactly as they ran on Kaggle, outputs included. They expect Kaggle's input paths and a private copy of the course framework, so use the `recsys2025` package to run the pipeline.
 
+During the competition I often kept working in the same Kaggle notebooks and saved over their earlier state, so the exact code behind several submissions was not preserved. That includes the final-score submission v7, which was produced from unsaved edits made after version 10.
+
 ## AI assistance
 
 Gemini was used as a coding assistant during the competition. Claude was used afterwards to turn the Kaggle notebook into this repository: restructuring the code, fixing the issues listed above, writing the tests and this README.
