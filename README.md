@@ -1,6 +1,6 @@
-# Two-Stage Recommender — PoliMi Recommender Systems Challenge 2025
+# Two-Stage Recommender — PoliMi Recommender Systems Challenge 2025-2026
 
-My solo solution to the [Recommender Systems 2025 Challenge](https://www.kaggle.com/competitions/recommender-systems-2025-challenge-polimi), the Kaggle competition of the Recommender Systems course at Politecnico di Milano (Nov 2025 – Jan 2026).
+My solo solution to the [Recommender Systems Challenge 2025-2026](https://www.kaggle.com/competitions/recommender-systems-2025-challenge-polimi), the Kaggle competition of the Recommender Systems course at Politecnico di Milano (Nov 2025 – Jan 2026).
 
 **Task:** recommend 20 new movies to each user from implicit feedback only. About 3.8M interactions, 27k users, 7k items; random 80/20 holdout; metric **Recall@20**.
 
